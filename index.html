@@ -423,9 +423,8 @@
    WORKER_URL vazio = usa as Pages Functions na mesma origem.
 ══════════════════════════════════════════════════ */
 var WORKER_URL        = '';
-SUPABASE_URL= 'https://kwyyvdjzotakajypkgbz.supabase.co',
-SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eXl2ZGp6b3Rha2FqeXBrZ2J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc2NjIsImV4cCI6MjA5MjE0MzY2Mn0.0ojILrC0iY-Ni-MMtu4-i85j6AtWxKvpJv0mvGNjPVY'
-
+var SUPABASE_URL      = 'https://kwyyvdjzotakajypkgbz.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eXl2ZGp6b3Rha2FqeXBrZ2J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc2NjIsImV4cCI6MjA5MjE0MzY2Mn0.0ojILrC0iY-Ni-MMtu4-i85j6AtWxKvpJv0mvGNjPVY';
 
 /* Vozes gerenciadas pelo Worker — apenas identificadores locais */
 var ELEVENLABS_VOICES = { aiden: 'aiden', aila: 'aila' };
@@ -719,7 +718,6 @@ function callGemini(messages, targetScreen, onDone, autoPlay) {
     return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{text: m.content}] };
   });
 
-  /* chama o Worker — a chave Gemini fica no Cloudflare, nunca no browser */
   fetch(WORKER_URL + '/api/gemini', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -729,7 +727,13 @@ function callGemini(messages, targetScreen, onDone, autoPlay) {
       generationConfig: {maxOutputTokens: 300, temperature: 0.85}
     })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){
+    if (!r.ok) {
+      return r.json().catch(function(){ return {error:{message:'HTTP ' + r.status}}; })
+        .then(function(errData){ throw new Error(errData.error ? errData.error.message : 'HTTP ' + r.status); });
+    }
+    return r.json();
+  })
   .then(function(data){
     typingEl.remove();
     var text = '';
@@ -741,9 +745,11 @@ function callGemini(messages, targetScreen, onDone, autoPlay) {
     addMsg(chatId, text, 'ai', !!autoPlay);
     if (onDone) onDone(text);
   })
-  .catch(function(){
+  .catch(function(err){
     typingEl.remove();
-    addMsg(chatId, 'Connection issue. Check your network and try again!', 'ai', false);
+    var msg = err && err.message ? err.message : 'unknown error';
+    console.error('[SPEAK+] callGemini error:', msg);
+    addMsg(chatId, '⚠️ Error: ' + msg + '. Check the browser console for details.', 'ai', false);
   });
 }
 
