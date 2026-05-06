@@ -1,11 +1,13 @@
 /**
  * SPEAK+ — Cloudflare Pages Function
  * Arquivo: functions/api/gemini.js
- * Rota automática: POST /api/gemini
+ * Rota automática: /api/gemini
  */
 
- export async function onRequestPost(context) {
-    const env = context.env;
+ export async function onRequest(context) {
+    const env     = context.env;
+    const request = context.request;
+    const method  = request.method.toUpperCase();
   
     const corsHeaders = {
       'Access-Control-Allow-Origin':  '*',
@@ -13,8 +15,21 @@
       'Access-Control-Allow-Headers': 'Content-Type',
     };
   
-    /* diagnóstico — aparece em Cloudflare Pages > Functions > Logs */
-    console.log('[SPEAK+] /api/gemini chamado');
+    /* preflight CORS */
+    if (method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+  
+    /* rejeita qualquer método que não seja POST */
+    if (method !== 'POST') {
+      return new Response(JSON.stringify({ error: { message: 'Method not allowed' } }), {
+        status:  405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  
+    /* diagnóstico */
+    console.log('[SPEAK+] /api/gemini POST recebido');
     console.log('[SPEAK+] GEMINI_API_KEY presente:', !!env.GEMINI_API_KEY);
   
     if (!env.GEMINI_API_KEY) {
@@ -27,7 +42,7 @@
     }
   
     try {
-      const body = await context.request.json();
+      const body = await request.json();
   
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${env.GEMINI_API_KEY}`,
@@ -53,15 +68,4 @@
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-  }
-  
-  export async function onRequestOptions() {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
   }
