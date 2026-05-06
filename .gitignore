@@ -8,6 +8,12 @@
 .env.production
 .env.development
 
+# ── Arquivos locais que não vão mais para o projeto ─────────
+config.js
+config.local.js
+generate-config.sh
+worker.js          # substituído pelas Pages Functions em /functions
+
 # ── Dependências ────────────────────────────────────────────
 node_modules/
 .pnp
@@ -45,6 +51,3 @@ Desktop.ini
 .cache/
 .parcel-cache/
 .eslintcache
-
-# ── Config local gerado ─────────────────────────────────────
-config.local.js
