@@ -418,23 +418,42 @@
 
 <script>
 /* ══════════════════════════════════════════════════
-   CONFIGURAÇÃO DO PROXY
-   Com Cloudflare Pages Functions, as rotas /api/gemini
-   e /api/elevenlabs ficam na mesma origem do site.
-   Não é necessário nenhuma URL externa aqui.
-   As chaves ficam nos Secrets do Cloudflare Pages.
+   CONFIGURAÇÃO — substitua os valores do Supabase
+   pelos do seu projeto antes de commitar.
+   WORKER_URL vazio = usa as Pages Functions na mesma origem.
 ══════════════════════════════════════════════════ */
-var WORKER_URL = '';  /* vazio = mesma origem (Cloudflare Pages) */
-
-/* Supabase Anon Key é pública por design — protegida pelo RLS */
-SUPABASE_URL: 'https://kwyyvdjzotakajypkgbz.supabase.com';
-SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eXl2ZGp6b3Rha2FqeXBrZ2J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc2NjIsImV4cCI6MjA5MjE0MzY2Mn0.0ojILrC0iY-Ni-MMtu4-i85j6AtWxKvpJv0mvGNjPVY'
+var WORKER_URL        = '';
+SUPABASE_URL= 'https://kwyyvdjzotakajypkgbz.supabase.co',
+SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3eXl2ZGp6b3Rha2FqeXBrZ2J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc2NjIsImV4cCI6MjA5MjE0MzY2Mn0.0ojILrC0iY-Ni-MMtu4-i85j6AtWxKvpJv0mvGNjPVY'
 
 
 /* Vozes gerenciadas pelo Worker — apenas identificadores locais */
 var ELEVENLABS_VOICES = { aiden: 'aiden', aila: 'aila' };
 
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* supabase é inicializado dentro do DOMContentLoaded para garantir
+   que a biblioteca do CDN já foi carregada antes de usar */
+var supabase;
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* validação rápida — avisa no console se os placeholders não foram trocados */
+  if (SUPABASE_URL.includes('SEU_PROJECT_ID') || SUPABASE_ANON_KEY.includes('SUA_ANON')) {
+    console.error('[SPEAK+] SUPABASE_URL ou SUPABASE_ANON_KEY ainda são placeholders. Substitua pelos valores reais do seu projeto Supabase.');
+    document.getElementById('s-auth').innerHTML =
+      '<div style="padding:2rem;text-align:center;color:#A32D2D;font-family:sans-serif">' +
+      '<div style="font-size:24px;margin-bottom:1rem">⚠️</div>' +
+      '<strong>Configuração incompleta</strong><br><br>' +
+      'Substitua <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> ' +
+      'no <code>index.html</code> pelos valores reais do seu projeto Supabase.' +
+      '</div>';
+    return;
+  }
+
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  /* inicia o app somente após o Supabase estar pronto */
+  initApp();
+});
 
 /* ══════════════════════════════════════════════════
    BANCO DE IMAGENS CONTEXTUAIS
@@ -1237,19 +1256,18 @@ function stopMic() {
 }
 
 /* ══════════════════════════════════════════════════
-   INICIALIZAÇÃO
+   INICIALIZAÇÃO — chamada pelo DOMContentLoaded
+   após o Supabase estar pronto
 ══════════════════════════════════════════════════ */
-(async function init() {
-  /* Sempre inicia na tela de login — o usuário deve autenticar explicitamente */
+async function initApp() {
+  /* sempre inicia na tela de login */
   go('s-auth');
 
-  /* Verifica se há sessão ativa apenas para pré-preencher o estado interno,
-     mas NÃO redireciona automaticamente — o usuário clica em "Entrar" */
+  /* verifica sessão ativa para pré-preencher email, mas não redireciona */
   var s = await supabase.auth.getSession();
   if (s.data && s.data.session) {
     APP.user = s.data.session.user;
     await loadUserProgress();
-    /* Mostra e-mail pré-preenchido como dica visual, mas mantém na tela de login */
     var emailEl = document.getElementById('login-email');
     if (emailEl && APP.user.email) emailEl.value = APP.user.email;
   }
@@ -1257,7 +1275,7 @@ function stopMic() {
   supabase.auth.onAuthStateChange(function(event) {
     if (event === 'SIGNED_OUT') { APP.user = null; go('s-auth'); }
   });
-})();
+}
 </script>
 </body>
 </html>
