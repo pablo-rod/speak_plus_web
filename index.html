@@ -725,7 +725,7 @@ function callGemini(messages, targetScreen, onDone, autoPlay) {
     body: JSON.stringify({
       system_instruction: {parts: [{text: TUTORS[APP.tutor].systemPrompt}]},
       contents: contents,
-      generationConfig: {maxOutputTokens: 300, temperature: 0.85}
+      generationConfig: {maxOutputTokens: 600, temperature: 0.85}
     })
   })
   .then(function(r){
