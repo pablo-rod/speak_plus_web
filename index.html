@@ -29,6 +29,69 @@
       --color-border-secondary: rgba(255,255,255,0.2);
     }
   }
+
+  /* ── Responsividade global ──────────────────────────── */
+html, body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: -webkit-fill-available; /* fix iOS Safari */
+}
+
+/* evita que inputs causem zoom no iOS (font-size mínimo 16px) */
+input, button, select, textarea {
+  font-size: 16px !important;
+}
+
+/* telas menores que 380px (dispositivos muito pequenos) */
+@media (max-width: 380px) {
+  .tutor-card { padding: 14px 8px; }
+  .bubble { font-size: 13px; padding: 8px 11px; }
+  .input-row input { font-size: 14px; }
+  .level-card { padding: 12px; }
+  .stat-card { padding: 10px; }
+  .mission { padding: 10px 11px; gap: 8px; }
+  .btn-primary { padding: 12px 20px; font-size: 15px; }
+  .complete-btn-row button { padding: 11px; font-size: 13px; }
+}
+
+/* telas entre 480px e 768px (tablets pequenos) */
+@media (min-width: 481px) and (max-width: 768px) {
+  body { max-width: 520px; }
+}
+
+/* telas maiores que 768px (tablets e desktop) */
+@media (min-width: 769px) {
+  body {
+    max-width: 480px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.1);
+    min-height: 100vh;
+  }
+  .screen { min-height: 100vh; }
+}
+
+/* fix altura em mobile — evita que a barra do browser corte o conteúdo */
+.screen.active {
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport height — suportado em browsers modernos */
+}
+
+/* fix para o chat não ultrapassar a tela em mobile */
+.chat-area {
+  max-height: calc(100dvh - 220px);
+}
+
+#s-test .chat-area,
+#s-lesson .chat-area {
+  max-height: calc(100dvh - 200px);
+} 
+
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:var(--font-sans);background:var(--color-background-tertiary);color:var(--color-text-primary);max-width:480px;margin:0 auto;min-height:100vh}
   .screen{display:none;min-height:100vh;flex-direction:column}
