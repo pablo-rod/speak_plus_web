@@ -604,14 +604,16 @@ function stripForSpeech(text) {
 function playWithElevenLabs(text, playerEl) {
   var iconEl = playerEl.querySelector('.el-play-icon');
   var bars   = playerEl.querySelectorAll('.el-bar');
-  if (APP.activeAudio) { APP.activeAudio.pause(); APP.activeAudio = null; }
+  if (APP.activeAudio) {
+    APP.activeAudio.pause();
+    APP.activeAudio = null;
+  }
 
   iconEl.classList.add('loading');
   iconEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="white" stroke-width="1.5"/></svg>';
 
   var cleanText = stripForSpeech(text);
 
-  /* chama o Worker — a chave ElevenLabs fica no Cloudflare */
   fetch(WORKER_URL + '/elevenlabs', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -624,12 +626,32 @@ function playWithElevenLabs(text, playerEl) {
   .then(function(blob) {
     var url   = URL.createObjectURL(blob);
     var audio = new Audio(url);
-    APP.activeAudio = audio;
+
+    /* fix iOS: precisa setar esses atributos antes de .play() */
+    audio.playsInline  = true;
+    audio.preload      = 'auto';
+    APP.activeAudio    = audio;
+
     iconEl.classList.remove('loading');
     iconEl.classList.add('playing');
     iconEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="3" height="8" rx="1" fill="white"/><rect x="7" y="2" width="3" height="8" rx="1" fill="white"/></svg>';
     bars.forEach(function(b){ b.classList.add('active'); });
-    audio.play();
+
+    /* play com tratamento de erro — mobile pode rejeitar se não houver interação prévia */
+    var playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(function(err) {
+        console.warn('[SPEAK+] Autoplay bloqueado pelo browser:', err.message);
+        /* não cai no fallback — mantém o botão para o usuário tocar manualmente */
+        iconEl.classList.remove('playing');
+        iconEl.innerHTML = playIconSVG();
+        bars.forEach(function(b){ b.classList.remove('active'); });
+        /* mostra dica visual de que precisa tocar */
+        iconEl.style.background = '#854F0B';
+        setTimeout(function(){ iconEl.style.background = ''; }, 2000);
+      });
+    }
+
     audio.onended = function() {
       iconEl.classList.remove('playing');
       iconEl.innerHTML = playIconSVG();
@@ -639,7 +661,7 @@ function playWithElevenLabs(text, playerEl) {
     };
   })
   .catch(function(err) {
-    console.warn('ElevenLabs fallback:', err);
+    console.warn('[SPEAK+] ElevenLabs fallback:', err);
     iconEl.classList.remove('loading');
     iconEl.innerHTML = playIconSVG();
     fallbackSpeak(text);
@@ -714,37 +736,32 @@ function addMsg(containerId, text, role, autoPlay) {
   var wrapper = document.createElement('div');
   wrapper.className = 'msg ' + role;
 
-  /* limpa marcadores de imagem do texto visível */
   var cleanText = text.replace(/\[IMG:[^\]]+\]/g, '').trim();
   var bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.innerHTML = cleanText.replace(/\n/g, '<br>');
 
-  /* player ElevenLabs apenas para mensagens do tutor */
   if (role === 'ai') {
     var player = buildAudioPlayer(text);
     bubble.appendChild(player);
 
-    /* auto-play da primeira mensagem de cada sessão */
-    if (autoPlay) {
-      setTimeout(function() { playWithElevenLabs(text, player); }, 400);
+    /* autoplay apenas em desktop — mobile exige interação do usuário */
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (autoPlay && !isMobile) {
+      setTimeout(function() { playWithElevenLabs(text, player); }, 600);
     }
 
-    /* imagem contextual se o Gemini marcou [IMG:palavra] */
     var imgWord = extractImageTag(text);
     if (imgWord) {
       var imgData = findImageForWord(imgWord, APP.currentTopic);
       if (imgData) {
         var imgCard = buildImageCard(imgData);
-        wrapper.appendChild(document.createElement('div')).appendChild(bubble);
-        wrapper.lastChild.className = ''; /* reset */
-        wrapper.innerHTML = '';
+        var timeEl2 = document.createElement('div');
+        timeEl2.className = 'msg-time';
+        timeEl2.textContent = getTime();
         wrapper.appendChild(bubble);
         wrapper.appendChild(imgCard);
-        var timeEl = document.createElement('div');
-        timeEl.className = 'msg-time';
-        timeEl.textContent = getTime();
-        wrapper.appendChild(timeEl);
+        wrapper.appendChild(timeEl2);
         c.appendChild(wrapper);
         c.scrollTop = c.scrollHeight;
         return wrapper;
